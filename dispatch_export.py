@@ -33,6 +33,27 @@ header {
 
 st.markdown(dracula_css, unsafe_allow_html=True)
 
+footer = """
+    <style>
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f9f9f9;
+            text-align: right;
+            padding: 10px;
+            font-size: 14px;
+            color: #333;
+            border-top: 1px solid #eaeaea;
+        }
+    </style>
+    <div class="footer">
+        Made with <span style="color: red;">&hearts;</span> {'_id': 'BSD';}
+    </div>
+"""
+st.markdown(footer, unsafe_allow_html=True)
+
 st.markdown(
     """
     <center><a href="https://libertyenergy.com" target="_blank">
