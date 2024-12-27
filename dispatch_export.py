@@ -93,10 +93,7 @@ if export_file is not None:
                 df = df[(df['receiverLocation.owner.name'] == crew) | (df['shipperLocation.owner.name'] == crew)].reset_index(drop=True)
                 df['items'] = df['items'].astype(str)
                 df['notes'] = df['notes'].astype(str)
-                # extracted_data = df["items"].apply(extract_fields)
-                # extracted_df = pd.DataFrame(extracted_data.tolist())
-                # df = pd.concat([df, extracted_df], axis=1)
-                st.write(df)
+                st.write(df.sort_values(by=['status'], ascending=[False], inplace=False))
             elif collection_name == 'locations':
                 st.write(df[df['owner.name'] == crew].reset_index(drop=True))
             else:
