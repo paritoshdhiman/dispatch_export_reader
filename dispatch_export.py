@@ -207,8 +207,9 @@ if op_type == "Extract JSON" and export_file:
                     })
                     
                     # Calculate net quantities
-                    grouped_df['net_receiver_quantity'] = grouped_df['receiver_inbound'] - grouped_df['receiver_outbound']
-                    grouped_df['net_shipper_quantity'] = grouped_df['shipper_inbound'] - grouped_df['shipper_outbound']
+                    grouped_df['TheirQty'] = grouped_df['shipper_inbound'] - grouped_df['receiver_outbound']
+                    grouped_df['MyQty'] = grouped_df['receiver_inbound'] - grouped_df['shipper_outbound'] 
+                    
                                        
                     st.dataframe(grouped_df)
                     st.subheader('Potentially Unsynced Shipments')
