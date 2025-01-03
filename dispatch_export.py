@@ -213,7 +213,7 @@ if op_type == "Extract JSON" and export_file:
                                        
                     st.dataframe(grouped_df, use_container_width=True)
                     st.subheader('Potentially Unsynced Shipments')
-                    st.dataframe(df_sum[(df_sum['code'].isna()) | (df_sum['status'] != 'archived')].reset_index(drop=True), use_container_width=True)
+                    st.dataframe(df_sum[(df_sum['code'].isna()) & (df_sum['status'] != 'archived')].reset_index(drop=True), use_container_width=True)
                 df['items'] = df['items'].astype(str)
                 df['notes'] = df['notes'].astype(str)
                 st.subheader(f"Collection: {collection_name}")
