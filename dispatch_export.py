@@ -211,16 +211,16 @@ if op_type == "Extract JSON" and export_file:
                     grouped_df['MyQty'] = grouped_df['receiver_inbound'] - grouped_df['shipper_outbound'] 
                     
                                        
-                    st.dataframe(grouped_df)
+                    st.dataframe(grouped_df, use_container_width=True)
                     st.subheader('Potentially Unsynced Shipments')
-                    st.dataframe(df_sum[df_sum['code'].isna()].reset_index(drop=True))
+                    st.dataframe(df_sum[df_sum['code'].isna()].reset_index(drop=True), use_container_width=True)
                 df['items'] = df['items'].astype(str)
                 df['notes'] = df['notes'].astype(str)
                 st.subheader(f"Collection: {collection_name}")
-                st.dataframe(df)
+                st.dataframe(df, use_container_width=True)
             else:
                 st.subheader(f"Collection: {collection_name}")
-                st.dataframe(df)
+                st.dataframe(df, use_container_width=True)
         else:
             st.warning(f"No data found for {collection_name}.")
 
@@ -241,12 +241,12 @@ elif op_type == "Compare JSONs" and export_file and export_file_2:
     st.subheader("Comparison for Shipments Collection")
     if not unique_in_1.empty:
         st.write("Unique to JSON 1:")
-        st.dataframe(unique_in_1)
+        st.dataframe(unique_in_1, use_container_width=True)
     if not unique_in_2.empty:
         st.write("Unique to JSON 2:")
-        st.dataframe(unique_in_2)
+        st.dataframe(unique_in_2, use_container_width=True)
     if not common.empty:
         st.write("Common elements:")
-        st.dataframe(common)
+        st.dataframe(common, use_container_width=True)
 else:
     st.error("Please upload the required JSON file(s).")
