@@ -86,49 +86,35 @@ def compare_dataframes(df1, df2):
 
     return unique_in_1, unique_in_2, common
 
+def flatten_df(df):
+    df['items'] = df['items'].apply(lambda x: eval(x) if isinstance(x, str) else x)
+    expanded_rows = []
 
-# Sidebar controls
-st.header("Database Export Breakdown")
-c1, c2 = st.columns(2)
-with c1:
-    crew = st.selectbox('CrewName', options=["",
-                                             "Alliance", "PM Warehouse", "Legacy", "Olympus", "Phantom",
-                                             "Phoenix", "Spartan", "Vapor", "EF Warehouse", "Apache", "DJ Warehouse",
-                                             "Raptor", "DJ Special Services", "BK Special Services", "PR Warehouse",
-                                             "SJ Warehouse", "Discovery", "Fuel", "HazCom", "Browning",
-                                             "WT Special Services", "Independence", "Valor", "Dynasty", "Eclipse",
-                                             "Apex", "Sabre", "Titan", "Easy Company", "Charlie Company", "Cobra",
-                                             "Reaper", "Patriot", "Nighthawk", "Falcon", "Spitfire", "Ironside",
-                                             "Northern Thunder", "Honey Badgers", "HV Warehouse", "MC Warehouse",
-                                             "Constitution", "WC Warehouse", "Republic", "Scorpion", "AP Warehouse",
-                                             "WT SS 2", "Saturn", "Revolution", "Spectre", "Kiowa", "Remington",
-                                             "Barrett", "Ghostrider", "Atlantis", "Lonestar", "Other Warehouse",
-                                             "Rebels", "Justice", "Renegade", "UT Warehouse", "Anthem", "Endeavour",
-                                             "Wallaroo", "AU Warehouse",
-                                             "BK Warehouse", "Freedom"
-                                             ])
-with c2:
-    op_type = st.selectbox("Operation Type", options=["Extract JSON", "Compare JSONs"])
+    # Iterate through each row in the DataFrame
+    for _, row in df.iterrows():
+        parent_data = row.drop(labels=["items"]).to_dict()  # Extract parent-level data
+        items = row["items"]  # Extract items list
 
-# File uploads
-if op_type == "Extract JSON":
-    export_file = st.file_uploader("Database JSON")
-else:
-    with c1:
-        export_file = st.file_uploader("Database JSON - 1")
-    with c2:
-        export_file_2 = st.file_uploader("Database JSON - 2")
+        # Iterate through each child JSON in the items list
+        for item in items:
+            # Extract the nested fields within "item"
+            item_data = item.get("item", {})
+            flattened_row = {
+                **parent_data,  # Include parent-level fields
+                "item.id": item.get("id"),
+                "item.name": item_data.get("name"),
+                "item.uom": item_data.get("uom"),
+                "shipperQuantity": item.get("shipperQuantity"),
+                "receiverQuantity": item.get("receiverQuantity"),
+                "isPartial": item.get("isPartial"),
+            }
+            expanded_rows.append(flattened_row)
 
-if crew == '':
-    st.write('Select a crew!')
+    # Create a new DataFrame from the expanded rows
+    expanded_df = pd.DataFrame(expanded_rows)
+    return expanded_df
 
-# if op_type == "Compare JSONs":
-#     execute_op = st.button("Execute")
-
-# Operations
-
-if op_type == "Extract JSON" and export_file:
-    data = json.load(export_file)
+def extract_json_details(data, id):
     collections = data.get("collections", [])
 
     # Sort collections by priority
@@ -145,7 +131,7 @@ if op_type == "Extract JSON" and export_file:
         df = normalize_and_filter(docs, crew, collection_name)
         if not df.empty:
             if collection_name == 'shipments':
-                location_name = st.selectbox('Location Name', options=df['receiverLocation.name'].unique().tolist())
+                location_name = st.selectbox('Location Name', options=df['receiverLocation.name'].unique().tolist(), key=id)
 
                 if location_name != '':
                     st.subheader('Pad Summary')
@@ -175,7 +161,7 @@ if op_type == "Extract JSON" and export_file:
                     # Create a new DataFrame from the expanded rows
                     expanded_df = pd.DataFrame(expanded_rows)
                     df_sum = expanded_df[(expanded_df['receiverLocation.name'] == location_name) | (
-                                expanded_df['shipperLocation.name'] == location_name)]
+                            expanded_df['shipperLocation.name'] == location_name)]
                     df_sum = df_sum[['id', 'code', 'status', 'shipperLocation.name', 'receiverLocation.name', 'item.id',
                                      'item.name', 'shipperQuantity', 'receiverQuantity']]
 
@@ -215,14 +201,23 @@ if op_type == "Extract JSON" and export_file:
                     })
 
                     # Calculate net quantities
-                    df_summary['TheirQty'] = df_summary['shipper_inbound'] - df_summary['receiver_outbound']
-                    df_summary['MyQty'] = df_summary['receiver_inbound'] - df_summary['shipper_outbound']
+                    df_summary['TheirQty'] = df_summary['shipper_inbound'] - grouped_df['receiver_outbound']
+                    df_summary['MyQty'] = df_summary['receiver_inbound'] - grouped_df['shipper_outbound']
 
-                    st.dataframe(df_summary, use_container_width = True)
+                    st.dataframe(df_summary, use_container_width=True)
                     st.subheader('Potentially Unsynced Shipments')
-                    st.dataframe(
-                        df_sum[(df_sum['code'].isna()) & (df_sum['status'] != 'archived')].reset_index(drop=True),
-                        use_container_width=True)
+                    df_unsync = df_sum[(df_sum['code'].isna()) & (df_sum['status'] != 'archived')].reset_index(
+                        drop=True)
+
+                    st.write('Unsynced Quantities')
+                    st.dataframe(df_unsync.groupby('item.name', as_index=False).agg({
+                        'shipperQuantity': 'sum',
+                        'receiverQuantity': 'sum'
+                    }))
+
+                    st.write('Unsynced Shipments')
+                    st.dataframe(df_unsync, use_container_width=True)
+
                 df['items'] = df['items'].astype(str)
                 df['notes'] = df['notes'].astype(str)
                 st.subheader(f"Collection: {collection_name}")
@@ -232,6 +227,45 @@ if op_type == "Extract JSON" and export_file:
                 st.dataframe(df, use_container_width=True)
         else:
             st.warning(f"No data found for {collection_name}.")
+
+# Sidebar controls
+st.header("Database Export Breakdown")
+c1, c2 = st.columns(2)
+with c1:
+    crew = st.selectbox('CrewName', options=["",
+                                             "Alliance", "PM Warehouse", "Legacy", "Olympus", "Phantom",
+                                             "Phoenix", "Spartan", "Vapor", "EF Warehouse", "Apache", "DJ Warehouse",
+                                             "Raptor", "DJ Special Services", "BK Special Services", "PR Warehouse",
+                                             "SJ Warehouse", "Discovery", "Fuel", "HazCom", "Browning",
+                                             "WT Special Services", "Independence", "Valor", "Dynasty", "Eclipse",
+                                             "Apex", "Sabre", "Titan", "Easy Company", "Charlie Company", "Cobra",
+                                             "Reaper", "Patriot", "Nighthawk", "Falcon", "Spitfire", "Ironside",
+                                             "Northern Thunder", "Honey Badgers", "HV Warehouse", "MC Warehouse",
+                                             "Constitution", "WC Warehouse", "Republic", "Scorpion", "AP Warehouse",
+                                             "WT SS 2", "Saturn", "Revolution", "Spectre", "Kiowa", "Remington",
+                                             "Barrett", "Ghostrider", "Atlantis", "Lonestar", "Other Warehouse",
+                                             "Rebels", "Justice", "Renegade", "UT Warehouse", "Anthem", "Endeavour",
+                                             "Wallaroo", "AU Warehouse",
+                                             "BK Warehouse", "Freedom"
+                                             ])
+with c2:
+    op_type = st.selectbox("Operation Type", options=["Extract JSON", "Compare JSONs"])
+
+# File uploads
+if op_type == "Extract JSON":
+    export_file = st.file_uploader("Database JSON")
+else:
+    with c1:
+        export_file = st.file_uploader("Database JSON - 1")
+    with c2:
+        export_file_2 = st.file_uploader("Database JSON - 2")
+
+if crew == '':
+    st.write('Select a crew!')
+
+if op_type == "Extract JSON" and export_file:
+    data = json.load(export_file)
+    extract_json_details(data, '1')
 
 elif op_type == "Compare JSONs" and export_file and export_file_2:
     # Load JSON data
@@ -250,12 +284,18 @@ elif op_type == "Compare JSONs" and export_file and export_file_2:
     st.subheader("Comparison for Shipments Collection")
     if not unique_in_1.empty:
         st.write("Unique to JSON 1:")
-        st.dataframe(unique_in_1, use_container_width=True)
+        st.dataframe(flatten_df(unique_in_1), use_container_width=True)
     if not unique_in_2.empty:
         st.write("Unique to JSON 2:")
-        st.dataframe(unique_in_2, use_container_width=True)
+        st.dataframe(flatten_df(unique_in_2), use_container_width=True)
     if not common.empty:
         st.write("Common elements:")
-        st.dataframe(common, use_container_width=True)
+        st.dataframe(flatten_df(common), use_container_width=True)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            extract_json_details(data1, '1')
+        with c2:
+            extract_json_details(data2, '2')
 else:
     st.error("Please upload the required JSON file(s).")
