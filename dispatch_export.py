@@ -177,7 +177,7 @@ if op_type == "Extract JSON" and export_file:
                         'receiverQuantity': 'sum'
                     })
 
-                    df['shipment_type'] = df.apply(
+                    grouped_df['shipment_type'] = grouped.apply(
                         lambda row: 'inbound' if row['receiverLocation.name'] == location_name 
                         else ('outbound' if row['shipperLocation.name'] == location_name else 'other'), 
                         axis=1
