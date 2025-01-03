@@ -56,6 +56,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
 # Utility functions
 def normalize_and_filter(docs, crew=None, collection_type=None):
     """Normalize and filter the collection data."""
@@ -63,10 +64,11 @@ def normalize_and_filter(docs, crew=None, collection_type=None):
     if collection_type == "shipments":
         df = df[
             (df["receiverLocation.owner.name"] == crew) | (df["shipperLocation.owner.name"] == crew)
-        ].reset_index(drop=True)
+            ].reset_index(drop=True)
     elif collection_type == "locations":
         df = df[df["owner.name"] == crew].reset_index(drop=True)
     return df
+
 
 def compare_dataframes(df1, df2):
     unique_in_1 = df1[df1["id"].isin(set(df1["id"]).difference(set(df2["id"])))]
@@ -84,25 +86,27 @@ def compare_dataframes(df1, df2):
 
     return unique_in_1, unique_in_2, common
 
+
 # Sidebar controls
 st.header("Database Export Breakdown")
 c1, c2 = st.columns(2)
 with c1:
     crew = st.selectbox('CrewName', options=["",
-            "Alliance", "PM Warehouse", "Legacy", "Olympus", "Phantom",
-            "Phoenix", "Spartan", "Vapor", "EF Warehouse", "Apache", "DJ Warehouse",
-            "Raptor", "DJ Special Services", "BK Special Services", "PR Warehouse",
-            "SJ Warehouse", "Discovery", "Fuel", "HazCom", "Browning",
-            "WT Special Services", "Independence", "Valor", "Dynasty", "Eclipse",
-            "Apex", "Sabre", "Titan", "Easy Company", "Charlie Company", "Cobra",
-            "Reaper", "Patriot", "Nighthawk", "Falcon", "Spitfire", "Ironside",
-            "Northern Thunder", "Honey Badgers", "HV Warehouse", "MC Warehouse",
-            "Constitution", "WC Warehouse", "Republic", "Scorpion", "AP Warehouse",
-            "WT SS 2", "Saturn", "Revolution", "Spectre", "Kiowa", "Remington",
-            "Barrett", "Ghostrider", "Atlantis", "Lonestar", "Other Warehouse",
-            "Rebels", "Justice", "Renegade", "UT Warehouse", "Anthem", "Endeavour", "Wallaroo", "AU Warehouse",
-            "BK Warehouse", "Freedom"
-        ])
+                                             "Alliance", "PM Warehouse", "Legacy", "Olympus", "Phantom",
+                                             "Phoenix", "Spartan", "Vapor", "EF Warehouse", "Apache", "DJ Warehouse",
+                                             "Raptor", "DJ Special Services", "BK Special Services", "PR Warehouse",
+                                             "SJ Warehouse", "Discovery", "Fuel", "HazCom", "Browning",
+                                             "WT Special Services", "Independence", "Valor", "Dynasty", "Eclipse",
+                                             "Apex", "Sabre", "Titan", "Easy Company", "Charlie Company", "Cobra",
+                                             "Reaper", "Patriot", "Nighthawk", "Falcon", "Spitfire", "Ironside",
+                                             "Northern Thunder", "Honey Badgers", "HV Warehouse", "MC Warehouse",
+                                             "Constitution", "WC Warehouse", "Republic", "Scorpion", "AP Warehouse",
+                                             "WT SS 2", "Saturn", "Revolution", "Spectre", "Kiowa", "Remington",
+                                             "Barrett", "Ghostrider", "Atlantis", "Lonestar", "Other Warehouse",
+                                             "Rebels", "Justice", "Renegade", "UT Warehouse", "Anthem", "Endeavour",
+                                             "Wallaroo", "AU Warehouse",
+                                             "BK Warehouse", "Freedom"
+                                             ])
 with c2:
     op_type = st.selectbox("Operation Type", options=["Extract JSON", "Compare JSONs"])
 
@@ -130,7 +134,8 @@ if op_type == "Extract JSON" and export_file:
     # Sort collections by priority
     priority_names = ["shipments", "locations"]
     sorted_collections = sorted(
-        collections, key=lambda col: priority_names.index(col["name"]) if col["name"] in priority_names else len(priority_names)
+        collections,
+        key=lambda col: priority_names.index(col["name"]) if col["name"] in priority_names else len(priority_names)
     )
 
     # Display each collection
@@ -169,17 +174,20 @@ if op_type == "Extract JSON" and export_file:
 
                     # Create a new DataFrame from the expanded rows
                     expanded_df = pd.DataFrame(expanded_rows)
-                    df_sum = expanded_df[(expanded_df['receiverLocation.name'] == location_name) | (expanded_df['shipperLocation.name'] == location_name)]
-                    df_sum = df_sum[['id', 'code', 'status', 'shipperLocation.name', 'receiverLocation.name', 'item.id', 'item.name', 'shipperQuantity', 'receiverQuantity']]
+                    df_sum = expanded_df[(expanded_df['receiverLocation.name'] == location_name) | (
+                                expanded_df['shipperLocation.name'] == location_name)]
+                    df_sum = df_sum[['id', 'code', 'status', 'shipperLocation.name', 'receiverLocation.name', 'item.id',
+                                     'item.name', 'shipperQuantity', 'receiverQuantity']]
 
-                    grouped_df = df_sum.groupby(['item.name', 'shipperLocation.name', 'receiverLocation.name'], as_index=False).agg({
+                    grouped_df = df_sum.groupby(['item.name', 'shipperLocation.name', 'receiverLocation.name'],
+                                                as_index=False).agg({
                         'shipperQuantity': 'sum',
                         'receiverQuantity': 'sum'
                     })
 
                     grouped_df['shipment_type'] = grouped_df.apply(
-                        lambda row: 'inbound' if row['receiverLocation.name'] == location_name 
-                        else ('outbound' if row['shipperLocation.name'] == location_name else 'other'), 
+                        lambda row: 'inbound' if row['receiverLocation.name'] == location_name
+                        else ('outbound' if row['shipperLocation.name'] == location_name else 'other'),
                         axis=1
                     )
 
@@ -197,7 +205,7 @@ if op_type == "Extract JSON" and export_file:
                     grouped_df['shipper_outbound'] = grouped_df.apply(
                         lambda row: row['shipperQuantity'] if row['shipment_type'] == 'outbound' else 0, axis=1
                     )
-                    
+
                     # Group by item.name and calculate the net quantities
                     df_summary = grouped_df.groupby('item.name', as_index=False).agg({
                         'receiver_inbound': 'sum',
@@ -205,15 +213,16 @@ if op_type == "Extract JSON" and export_file:
                         'shipper_inbound': 'sum',
                         'shipper_outbound': 'sum'
                     })
-                    
+
                     # Calculate net quantities
                     df_summary['TheirQty'] = df_summary['shipper_inbound'] - grouped_df['receiver_outbound']
-                    df_summary['MyQty'] = df_summary['receiver_inbound'] - grouped_df['shipper_outbound'] 
-                    
-                                       
-                    st.dataframe(df_summary use_container_width=True)
+                    df_summary['MyQty'] = df_summary['receiver_inbound'] - grouped_df['shipper_outbound']
+
+                    st.dataframe(df_summary, use_container_width = True)
                     st.subheader('Potentially Unsynced Shipments')
-                    st.dataframe(df_sum[(df_sum['code'].isna()) & (df_sum['status'] != 'archived')].reset_index(drop=True), use_container_width=True)
+                    st.dataframe(
+                        df_sum[(df_sum['code'].isna()) & (df_sum['status'] != 'archived')].reset_index(drop=True),
+                        use_container_width=True)
                 df['items'] = df['items'].astype(str)
                 df['notes'] = df['notes'].astype(str)
                 st.subheader(f"Collection: {collection_name}")
