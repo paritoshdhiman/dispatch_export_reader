@@ -209,11 +209,9 @@ if op_type == "Extract JSON" and export_file:
                     # Calculate net quantities
                     grouped_df['net_receiver_quantity'] = grouped_df['receiver_inbound'] - grouped_df['receiver_outbound']
                     grouped_df['net_shipper_quantity'] = grouped_df['shipper_inbound'] - grouped_df['shipper_outbound']
-                    
-
-                    
-                    st.write(grouped_df)
-                    st.write('Potentially Unsynced Shipments')
+                                       
+                    st.dataframe(grouped_df)
+                    st.subheader('Potentially Unsynced Shipments')
                     st.dataframe(df_sum[df_sum['code'].isna()].reset_index(drop=True))
                 df['items'] = df['items'].astype(str)
                 df['notes'] = df['notes'].astype(str)
