@@ -118,59 +118,101 @@ else:
 if crew == '':
     st.write('Select a crew!')
 
-execute_op = st.button("Execute")
+# if op_type == "Compare JSONs":
+#     execute_op = st.button("Execute")
 
 # Operations
-if execute_op:
-    if op_type == "Extract JSON" and export_file:
-        data = json.load(export_file)
-        collections = data.get("collections", [])
 
-        # Sort collections by priority
-        priority_names = ["shipments", "locations"]
-        sorted_collections = sorted(
-            collections, key=lambda col: priority_names.index(col["name"]) if col["name"] in priority_names else len(priority_names)
-        )
+if op_type == "Extract JSON" and export_file:
+    data = json.load(export_file)
+    collections = data.get("collections", [])
 
-        # Display each collection
-        for collection in sorted_collections:
-            collection_name = collection.get("name", "Unknown Collection")
-            docs = collection.get("docs", [])
-            df = normalize_and_filter(docs, crew, collection_name)
-            if not df.empty:
-                if collection_name == 'shipments':
-                    st.subheader(f"Collection: {collection_name}")
-                    df['items'] = df['items'].astype(str)
-                    df['notes'] = df['notes'].astype(str)
-                    st.dataframe(df)
-                else:
-                    st.dataframe(df)
+    # Sort collections by priority
+    priority_names = ["shipments", "locations"]
+    sorted_collections = sorted(
+        collections, key=lambda col: priority_names.index(col["name"]) if col["name"] in priority_names else len(priority_names)
+    )
+
+    # Display each collection
+    for collection in sorted_collections:
+        collection_name = collection.get("name", "Unknown Collection")
+        docs = collection.get("docs", [])
+        df = normalize_and_filter(docs, crew, collection_name)
+        if not df.empty:
+            if collection_name == 'shipments':
+                location_name = st.selectbox('Location Name', options=df['receiverLocation.name'].unique().tolist())
+
+                if location_name != '':
+                    st.subheader('Pad Summary')
+                    df['items'] = df['items'].apply(lambda x: eval(x) if isinstance(x, str) else x)
+                    expanded_rows = []
+
+                    # Iterate through each row in the DataFrame
+                    for _, row in df.iterrows():
+                        parent_data = row.drop(labels=["items"]).to_dict()  # Extract parent-level data
+                        items = row["items"]  # Extract items list
+
+                        # Iterate through each child JSON in the items list
+                        for item in items:
+                            # Extract the nested fields within "item"
+                            item_data = item.get("item", {})
+                            flattened_row = {
+                                **parent_data,  # Include parent-level fields
+                                "item.id": item.get("id"),
+                                "item.name": item_data.get("name"),
+                                "item.uom": item_data.get("uom"),
+                                "shipperQuantity": item.get("shipperQuantity"),
+                                "receiverQuantity": item.get("receiverQuantity"),
+                                "isPartial": item.get("isPartial"),
+                            }
+                            expanded_rows.append(flattened_row)
+
+                    # Create a new DataFrame from the expanded rows
+                    expanded_df = pd.DataFrame(expanded_rows)
+                    df_sum = expanded_df[(expanded_df['receiverLocation.name'] == location_name) | (expanded_df['shipperLocation.name'] == location_name)]
+                    df_sum = df_sum[['id', 'code', 'status', 'shipperLocation.name', 'receiverLocation.name', 'item.id', 'item.name', 'shipperQuantity', 'receiverQuantity']]
+
+                    grouped_df = df_sum.groupby(['item.name', 'shipperLocation.name', 'receiverLocation.name'], as_index=False).agg({
+                        'shipperQuantity': 'sum',
+                        'receiverQuantity': 'sum'
+                    })
+
+                    st.write(grouped_df)
+                    st.write('Potentially Unsynced Shipments')
+                    st.dataframe(df_sum[df_sum['code'].isna()].reset_index(drop=True))
+                df['items'] = df['items'].astype(str)
+                df['notes'] = df['notes'].astype(str)
+                st.subheader(f"Collection: {collection_name}")
+                st.dataframe(df)
             else:
-                st.warning(f"No data found for {collection_name}.")
+                st.subheader(f"Collection: {collection_name}")
+                st.dataframe(df)
+        else:
+            st.warning(f"No data found for {collection_name}.")
 
-    elif op_type == "Compare JSONs" and export_file and export_file_2:
-        # Load JSON data
-        data1 = json.load(export_file)
-        data2 = json.load(export_file_2)
+elif op_type == "Compare JSONs" and export_file and export_file_2:
+    # Load JSON data
+    data1 = json.load(export_file)
+    data2 = json.load(export_file_2)
 
-        # Extract and compare `shipments` collection
-        docs1 = next((col["docs"] for col in data1.get("collections", []) if col["name"] == "shipments"), [])
-        docs2 = next((col["docs"] for col in data2.get("collections", []) if col["name"] == "shipments"), [])
-        df1 = pd.json_normalize(docs1) if docs1 else pd.DataFrame()
-        df2 = pd.json_normalize(docs2) if docs2 else pd.DataFrame()
+    # Extract and compare `shipments` collection
+    docs1 = next((col["docs"] for col in data1.get("collections", []) if col["name"] == "shipments"), [])
+    docs2 = next((col["docs"] for col in data2.get("collections", []) if col["name"] == "shipments"), [])
+    df1 = pd.json_normalize(docs1) if docs1 else pd.DataFrame()
+    df2 = pd.json_normalize(docs2) if docs2 else pd.DataFrame()
 
-        unique_in_1, unique_in_2, common = compare_dataframes(df1, df2)
+    unique_in_1, unique_in_2, common = compare_dataframes(df1, df2)
 
-        # Display results
-        st.subheader("Comparison for Shipments Collection")
-        if not unique_in_1.empty:
-            st.write("Unique to JSON 1:")
-            st.dataframe(unique_in_1)
-        if not unique_in_2.empty:
-            st.write("Unique to JSON 2:")
-            st.dataframe(unique_in_2)
-        if not common.empty:
-            st.write("Common elements:")
-            st.dataframe(common)
-    else:
-        st.error("Please upload the required JSON file(s).")
+    # Display results
+    st.subheader("Comparison for Shipments Collection")
+    if not unique_in_1.empty:
+        st.write("Unique to JSON 1:")
+        st.dataframe(unique_in_1)
+    if not unique_in_2.empty:
+        st.write("Unique to JSON 2:")
+        st.dataframe(unique_in_2)
+    if not common.empty:
+        st.write("Common elements:")
+        st.dataframe(common)
+else:
+    st.error("Please upload the required JSON file(s).")
