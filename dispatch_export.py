@@ -184,6 +184,34 @@ if op_type == "Extract JSON" and export_file:
                     )
 
                     grouped_df = grouped_df.drop(columns=['shipperLocation.name', 'receiverLocation.name'], axis=1)
+
+                    grouped_df['receiver_inbound'] = grouped_df.apply(
+                        lambda row: row['receiverQuantity'] if row['shipment_type'] == 'inbound' else 0, axis=1
+                    )
+                    grouped_df['receiver_outbound'] = grouped_df.apply(
+                        lambda row: row['receiverQuantity'] if row['shipment_type'] == 'outbound' else 0, axis=1
+                    )
+                    grouped_df['shipper_inbound'] = grouped_df.apply(
+                        lambda row: row['shipperQuantity'] if row['shipment_type'] == 'inbound' else 0, axis=1
+                    )
+                    grouped_df['shipper_outbound'] = grouped_df.apply(
+                        lambda row: row['shipperQuantity'] if row['shipment_type'] == 'outbound' else 0, axis=1
+                    )
+                    
+                    # Group by item.name and calculate the net quantities
+                    grouped_df = grouped_df.groupby('item.name', as_index=False).agg({
+                        'receiver_inbound': 'sum',
+                        'receiver_outbound': 'sum',
+                        'shipper_inbound': 'sum',
+                        'shipper_outbound': 'sum'
+                    })
+                    
+                    # Calculate net quantities
+                    grouped_df['net_receiver_quantity'] = grouped_df['receiver_inbound'] - grouped_df['receiver_outbound']
+                    grouped_df['net_shipper_quantity'] = grouped_df['shipper_inbound'] - grouped_df['shipper_outbound']
+                    
+
+                    
                     st.write(grouped_df)
                     st.write('Potentially Unsynced Shipments')
                     st.dataframe(df_sum[df_sum['code'].isna()].reset_index(drop=True))
