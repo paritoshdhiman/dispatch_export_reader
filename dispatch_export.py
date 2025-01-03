@@ -183,7 +183,7 @@ if op_type == "Extract JSON" and export_file:
                         axis=1
                     )
 
-
+                    grouped_df = grouped_df.drop(columns=['shipperLocation.name', 'receiverLocation.name'], axis=1)
                     st.write(grouped_df)
                     st.write('Potentially Unsynced Shipments')
                     st.dataframe(df_sum[df_sum['code'].isna()].reset_index(drop=True))
