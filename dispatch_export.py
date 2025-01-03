@@ -211,7 +211,7 @@ if op_type == "Extract JSON" and export_file:
                     df_summary['MyQty'] = df_summary['receiver_inbound'] - grouped_df['shipper_outbound'] 
                     
                                        
-                    st.dataframe(grouped_df, use_container_width=True)
+                    st.dataframe(df_summary use_container_width=True)
                     st.subheader('Potentially Unsynced Shipments')
                     st.dataframe(df_sum[(df_sum['code'].isna()) & (df_sum['status'] != 'archived')].reset_index(drop=True), use_container_width=True)
                 df['items'] = df['items'].astype(str)
