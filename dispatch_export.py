@@ -199,7 +199,7 @@ if op_type == "Extract JSON" and export_file:
                     )
                     
                     # Group by item.name and calculate the net quantities
-                    grouped_df = grouped_df.groupby('item.name', as_index=False).agg({
+                    df_summary = grouped_df.groupby('item.name', as_index=False).agg({
                         'receiver_inbound': 'sum',
                         'receiver_outbound': 'sum',
                         'shipper_inbound': 'sum',
@@ -207,8 +207,8 @@ if op_type == "Extract JSON" and export_file:
                     })
                     
                     # Calculate net quantities
-                    grouped_df['TheirQty'] = grouped_df['shipper_inbound'] - grouped_df['receiver_outbound']
-                    grouped_df['MyQty'] = grouped_df['receiver_inbound'] - grouped_df['shipper_outbound'] 
+                    df_summary['TheirQty'] = df_summary['shipper_inbound'] - grouped_df['receiver_outbound']
+                    df_summary['MyQty'] = df_summary['receiver_inbound'] - grouped_df['shipper_outbound'] 
                     
                                        
                     st.dataframe(grouped_df, use_container_width=True)
