@@ -177,6 +177,13 @@ if op_type == "Extract JSON" and export_file:
                         'receiverQuantity': 'sum'
                     })
 
+                    df['shipment_type'] = df.apply(
+                        lambda row: 'inbound' if row['receiverLocation.name'] == location_name 
+                        else ('outbound' if row['shipperLocation.name'] == location_name else 'other'), 
+                        axis=1
+                    )
+
+
                     st.write(grouped_df)
                     st.write('Potentially Unsynced Shipments')
                     st.dataframe(df_sum[df_sum['code'].isna()].reset_index(drop=True))
